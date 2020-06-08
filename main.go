@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -14,12 +15,18 @@ const (
 	defaultEncoding = "windows-1251"
 )
 
+var client *http.Client
+
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = defaultPort
 		log.Println("$PORT will be set as default:", defaultPort)
 	}
+
+	customTransport := http.DefaultTransport.(*http.Transport).Clone()
+	customTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	client = &http.Client{Transport: customTransport}
 
 	http.HandleFunc("/", root)
 	http.HandleFunc("/s/", status)
@@ -58,7 +65,7 @@ func url(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := http.Get(url)
+	resp, err := client.Get(url)
 	if err != nil {
 		log.Println("Has error:", err)
 		return
