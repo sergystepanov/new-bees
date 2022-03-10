@@ -1,2 +1,2 @@
 # new-bees
-A simple Go proxy
+A simple Go 1.17 proxy
