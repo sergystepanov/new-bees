@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
+	browser "github.com/EDDYCJY/fake-useragent"
 )
 
 const (
@@ -64,7 +66,17 @@ func url(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := client.Get(url)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		log.Printf("bad url: %v", url)
+		return
+	}
+
+	ua := browser.Firefox()
+	log.Printf("ua is %v", ua)
+	req.Header.Set("User-Agent", ua)
+
+	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf("couldn't get, %v", err)
 		return
