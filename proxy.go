@@ -51,16 +51,16 @@ func proxy() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		hasDdg := false
-		for _, c := range client.Jar.Cookies(u) {
-			if strings.Contains(c.Name, "ddg2") {
-				hasDdg = true
-				log.Printf("Has DDG, %v", c.Value)
-				break
-			}
-		}
+		//hasDdg := false
+		//for _, c := range client.Jar.Cookies(u) {
+		//	if strings.Contains(c.Name, "ddg2") {
+		//		hasDdg = true
+		//		log.Printf("Has DDG, %v", c.Value)
+		//		break
+		//	}
+		//}
 
-		if !hasDdg && strings.Contains(url, "f"+"ips") {
+		if strings.Contains(url, "f"+"ips") {
 			err = ddosGuard(u, &client)
 			if err != nil {
 				log.Printf("No DDG! %v", err)
