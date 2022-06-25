@@ -1,98 +1,40 @@
 package main
 
 import (
-	"crypto/tls"
+	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
-
-	browser "github.com/EDDYCJY/fake-useragent"
+	"syscall"
 )
-
-const (
-	defaultPort            = "8080"
-	defaultEncoding        = "windows-1251"
-	defaultCharsetResponse = "text/html; charset=" + defaultEncoding
-
-	messageGoAway = "Go away!"
-)
-
-var client *http.Client
 
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = defaultPort
-		log.Println("$PORT will be set as default:", defaultPort)
-	}
+	port := envOr("PORT", "8080")
+	log.Printf("Port: %v", port)
 
-	customTransport := http.DefaultTransport.(*http.Transport).Clone()
-	customTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	client = &http.Client{
-		Transport: customTransport,
-	}
+	h := http.NewServeMux()
 
-	http.HandleFunc("/", root)
-	http.HandleFunc("/s/", status)
-	http.HandleFunc("/url", url)
+	h.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = fmt.Fprintf(w, "Go away!")
+	})
+	h.HandleFunc("/s/", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprintf(w, "%s", strings.TrimPrefix(r.URL.Path, "/s/"))
+	})
+	h.HandleFunc("/url", proxy())
 
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
-		log.Fatalf("Couldn't start the server: %s", err)
-	}
-}
-
-// Handles root requests
-func root(w http.ResponseWriter, _ *http.Request) { _, _ = fmt.Fprintf(w, messageGoAway) }
-
-// Handles status requests
-func status(w http.ResponseWriter, r *http.Request) {
-	_, _ = fmt.Fprintf(w, "%s", strings.TrimPrefix(r.URL.Path, "/s/"))
-}
-
-// Handles URL requests
-func url(w http.ResponseWriter, r *http.Request) {
-	// parse POST params
-	if err := r.ParseForm(); err != nil {
-		log.Printf("couldn't parse params, %v", err)
-		return
-	}
-
-	url := r.Form.Get("_url")
-	if url == "" {
-		log.Printf("bad params!")
-		return
-	}
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		log.Printf("bad url: %v", url)
-		return
-	}
-
-	ua := browser.Firefox()
-	log.Printf("ua is %v", ua)
-	req.Header.Set("User-Agent", ua)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Printf("couldn't get, %v", err)
-		return
-	}
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			log.Printf("has close error, %v", err)
-			return
-		}
+	server := &http.Server{Addr: ":" + port, Handler: h}
+	go func() {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+		<-c
+		log.Printf("Terminate")
+		_ = server.Shutdown(context.Background())
 	}()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Printf("couldn't read, %v", err)
-		return
-	}
 
-	w.Header().Set("Content-Type", defaultCharsetResponse)
-	_, _ = fmt.Fprintf(w, "%s", body)
+	if err := server.ListenAndServe(); err != nil {
+		log.Fatalf("server: %s", err)
+	}
 }
