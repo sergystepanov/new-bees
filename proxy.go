@@ -32,6 +32,8 @@ func init() {
 func proxy() func(w http.ResponseWriter, r *http.Request) {
 	ua := envOr("UA", "")
 	log.Printf("UA: %v", ua)
+	genCookie := envOr("GEN_COOKIE", "") != ""
+	log.Printf("GEN_COOKIE: %v", genCookie)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		// parse POST params
@@ -51,21 +53,17 @@ func proxy() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		//hasDdg := false
-		//for _, c := range client.Jar.Cookies(u) {
-		//	if strings.Contains(c.Name, "ddg2") {
-		//		hasDdg = true
-		//		log.Printf("Has DDG, %v", c.Value)
-		//		break
-		//	}
-		//}
-
 		if strings.Contains(url, "f"+"ips") {
-			err = ddosGuard(u, &client)
+			if genCookie {
+				err = ddosGuardTokenized(u, &client)
+			} else {
+				err = ddosGuard(u, &client)
+			}
 			if err != nil {
 				log.Printf("No DDG! %v", err)
+			} else {
+				log.Printf("Set DDG")
 			}
-			log.Printf("Set DDG")
 		}
 
 		req, err := http.NewRequest("GET", url, nil)
@@ -95,12 +93,6 @@ func proxy() func(w http.ResponseWriter, r *http.Request) {
 		}
 
 		contentType := resp.Header.Get("Content-Type")
-
-		log.Printf("Cookies:")
-		for _, c := range r.Cookies() {
-			log.Printf("%v", c)
-		}
-
 		w.Header().Set("Content-Type", contentType)
 		_, _ = fmt.Fprintf(w, "%s", body)
 	}
