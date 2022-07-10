@@ -9,6 +9,7 @@ import (
 	"net/http/cookiejar"
 	url2 "net/url"
 	"strings"
+	"time"
 )
 
 var client http.Client
@@ -24,6 +25,7 @@ func init() {
 	ct.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	client = http.Client{
+		Timeout:   30 * time.Second,
 		Jar:       jar,
 		Transport: ct,
 	}
@@ -34,6 +36,8 @@ func proxy() func(w http.ResponseWriter, r *http.Request) {
 	log.Printf("UA: %v", ua)
 	genCookie := envOr("GEN_COOKIE", "") != ""
 	log.Printf("GEN_COOKIE: %v", genCookie)
+	setCookie := envOr("SET_COOKIE", "")
+	log.Printf("SET_COOKIE: %v", setCookie)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		// parse POST params
@@ -74,6 +78,9 @@ func proxy() func(w http.ResponseWriter, r *http.Request) {
 
 		if ua != "" {
 			req.Header.Set("User-Agent", ua)
+		}
+		if setCookie != "" {
+			req.Header.Set("cookie", setCookie)
 		}
 		resp, err := client.Do(req)
 		if err != nil {
