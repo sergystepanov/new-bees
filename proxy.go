@@ -38,6 +38,8 @@ func proxy() func(w http.ResponseWriter, r *http.Request) {
 	log.Printf("GEN_COOKIE: %v", genCookie)
 	setCookie := envOr("SET_COOKIE", "")
 	log.Printf("SET_COOKIE: %v", setCookie)
+	noDDG := envOr("NO_DDG", "") != ""
+	log.Printf("NO_DDG: %v", noDDG)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		// parse POST params
@@ -57,7 +59,7 @@ func proxy() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if strings.Contains(url, "f"+"ips") {
+		if !noDDG && strings.Contains(url, "f"+"ips") {
 			if genCookie {
 				err = ddosGuardTokenized(u, &client)
 			} else {
