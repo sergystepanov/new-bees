@@ -1,4 +1,4 @@
 module github.com/sergystepanov/new-bees
 
-// +heroku goVersion go1.17
-go 1.17
+// +heroku goVersion go1.19
+go 1.19
