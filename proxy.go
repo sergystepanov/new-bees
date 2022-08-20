@@ -14,7 +14,7 @@ import (
 )
 
 var client http.Client
-var isFirst atomic.Bool
+var isFirst atomic.Int32
 
 func init() {
 	jar, err := cookiejar.New(nil)
@@ -31,7 +31,7 @@ func init() {
 		Jar:       jar,
 		Transport: ct,
 	}
-	isFirst.Store(false)
+	isFirst.Store(0)
 }
 
 func proxy() func(w http.ResponseWriter, r *http.Request) {
@@ -100,11 +100,11 @@ func proxy() func(w http.ResponseWriter, r *http.Request) {
 			}
 		}()
 
-		if !isFirst.Load() && !noDDG && strings.Contains(url_, "f"+"ips") {
+		if isFirst.Load() == 0 && !noDDG && strings.Contains(url_, "f"+"ips") {
 			time.Sleep(5 * time.Second)
 			err = ddosGuard(u, &client)
 			resp, err = client.Do(req)
-			isFirst.Store(true)
+			isFirst.Store(1)
 			if err != nil {
 				log.Printf("couldn't get, %v", err)
 				return
