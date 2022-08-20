@@ -3,16 +3,18 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
-	url2 "net/url"
+	"net/url"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
 var client http.Client
+var isFirst atomic.Bool
 
 func init() {
 	jar, err := cookiejar.New(nil)
@@ -29,6 +31,7 @@ func init() {
 		Jar:       jar,
 		Transport: ct,
 	}
+	isFirst.Store(false)
 }
 
 func proxy() func(w http.ResponseWriter, r *http.Request) {
@@ -48,23 +51,24 @@ func proxy() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		url := r.Form.Get("_url")
-		if url == "" {
+		url_ := r.Form.Get("_url")
+		if url_ == "" {
 			log.Printf("bad url!")
 			return
 		}
-		u, err := url2.Parse(url)
+		u, err := url.Parse(url_)
 		if err != nil {
 			log.Printf("bad url: %v", err)
 			return
 		}
 
-		if !noDDG && strings.Contains(url, "f"+"ips") {
+		if !noDDG && strings.Contains(url_, "f"+"ips") {
 			if genCookie {
 				err = ddosGuardTokenized(u, &client)
 			} else {
 				err = ddosGuard(u, &client)
 			}
+
 			if err != nil {
 				log.Printf("No DDG! %v", err)
 			} else {
@@ -72,9 +76,9 @@ func proxy() func(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		req, err := http.NewRequest("GET", url, nil)
+		req, err := http.NewRequest("GET", url_, nil)
 		if err != nil {
-			log.Printf("bad url: %v", url)
+			log.Printf("bad url: %v", url_)
 			return
 		}
 
@@ -95,7 +99,20 @@ func proxy() func(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}()
-		body, err := ioutil.ReadAll(resp.Body)
+
+		if !isFirst.Load() && !noDDG && strings.Contains(url_, "f"+"ips") {
+			time.Sleep(5 * time.Second)
+			err = ddosGuard(u, &client)
+			resp, err = client.Do(req)
+			isFirst.Store(true)
+			if err != nil {
+				log.Printf("couldn't get, %v", err)
+				return
+			}
+			log.Printf("2nd rq")
+		}
+
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			log.Printf("couldn't read, %v", err)
 			return

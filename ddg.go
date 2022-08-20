@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
@@ -32,7 +32,7 @@ func ddosGuard(u *url.URL, client *http.Client) error {
 		return err
 	}
 	defer func() { _ = resp2.Body.Close() }()
-	body, err := ioutil.ReadAll(resp2.Body)
+	body, err := io.ReadAll(resp2.Body)
 	if err != nil {
 		return err
 	}
