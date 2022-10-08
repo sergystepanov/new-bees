@@ -79,8 +79,13 @@ func proxy() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer func() { _ = resp.Body.Close() }()
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Printf("couldn't read, %v", err)
+			return
+		}
 
 		w.Header().Set(ContentType, resp.Header.Get(ContentType))
-		_, _ = io.Copy(w, resp.Body)
+		_, _ = w.Write(body)
 	}
 }
