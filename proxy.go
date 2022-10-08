@@ -23,7 +23,7 @@ func init() {
 	ct := http.DefaultTransport.(*http.Transport).Clone()
 	ct.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
-	client = http.Client{Timeout: 30 * time.Second, Jar: jar, Transport: ct}
+	client = http.Client{Timeout: 60 * time.Second, Jar: jar, Transport: ct}
 }
 
 const (
@@ -78,8 +78,8 @@ func proxy() func(w http.ResponseWriter, r *http.Request) {
 			log.Printf("couldn't get, %v", err)
 			return
 		}
-		defer func() { _ = resp.Body.Close() }()
 		body, err := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
 		if err != nil {
 			log.Printf("couldn't read, %v", err)
 			return
