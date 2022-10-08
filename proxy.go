@@ -36,13 +36,9 @@ func init() {
 
 func proxy() func(w http.ResponseWriter, r *http.Request) {
 	ua := envOr("UA", "")
-	log.Printf("UA: %v", ua)
-	genCookie := envOr("GEN_COOKIE", "") != ""
-	log.Printf("GEN_COOKIE: %v", genCookie)
 	setCookie := envOr("SET_COOKIE", "")
-	log.Printf("SET_COOKIE: %v", setCookie)
 	noDDG := envOr("NO_DDG", "") != ""
-	log.Printf("NO_DDG: %v", noDDG)
+	log.Printf("PROXY: UA=%v | Cookie=%v | NO_DDG=%v", ua, setCookie, noDDG)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		// parse POST params
@@ -63,17 +59,8 @@ func proxy() func(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !noDDG && strings.Contains(url_, "f"+"ips") {
-			if genCookie {
-				err = ddosGuardTokenized(u, &client)
-			} else {
-				err = ddosGuard(u, &client)
-			}
-
-			if err != nil {
-				log.Printf("No DDG! %v", err)
-			} else {
-				log.Printf("Set DDG")
-			}
+			err = ddosGuard(u, &client)
+			log.Printf("DDG: err?=%v", err)
 		}
 
 		req, err := http.NewRequest("GET", url_, nil)
@@ -93,24 +80,7 @@ func proxy() func(w http.ResponseWriter, r *http.Request) {
 			log.Printf("couldn't get, %v", err)
 			return
 		}
-		defer func() {
-			if err := resp.Body.Close(); err != nil {
-				log.Printf("has close error, %v", err)
-				return
-			}
-		}()
-
-		if atomic.LoadInt32(&isFirst) == 0 && !noDDG && strings.Contains(url_, "f"+"ips") {
-			time.Sleep(5 * time.Second)
-			err = ddosGuard(u, &client)
-			resp, err = client.Do(req)
-			atomic.StoreInt32(&isFirst, 1)
-			if err != nil {
-				log.Printf("couldn't get, %v", err)
-				return
-			}
-			log.Printf("2nd rq")
-		}
+		defer func() { _ = resp.Body.Close() }()
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
@@ -118,8 +88,7 @@ func proxy() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		contentType := resp.Header.Get("Content-Type")
-		w.Header().Set("Content-Type", contentType)
+		w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
 		_, _ = fmt.Fprintf(w, "%s", body)
 	}
 }

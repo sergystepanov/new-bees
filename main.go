@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -15,13 +14,11 @@ func main() {
 	port := envOr("PORT", "8080")
 	log.Printf("Port: %v", port)
 
-	h := http.NewServeMux()
+	h := http.DefaultServeMux
 
-	h.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = fmt.Fprintf(w, "Go away!")
-	})
+	h.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("Go away")) })
 	h.HandleFunc("/s/", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = fmt.Fprintf(w, "%s", strings.TrimPrefix(r.URL.Path, "/s/"))
+		_, _ = w.Write([]byte(strings.TrimPrefix(r.URL.Path, "/s/")))
 	})
 	h.HandleFunc("/url", proxy())
 
