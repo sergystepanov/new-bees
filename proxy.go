@@ -8,12 +8,10 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"strings"
-	"sync/atomic"
 	"time"
 )
 
 var client http.Client
-var isFirst int32
 
 func init() {
 	jar, err := cookiejar.New(nil)
@@ -25,12 +23,7 @@ func init() {
 	ct := http.DefaultTransport.(*http.Transport).Clone()
 	ct.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
-	client = http.Client{
-		Timeout:   30 * time.Second,
-		Jar:       jar,
-		Transport: ct,
-	}
-	atomic.StoreInt32(&isFirst, 0)
+	client = http.Client{Timeout: 30 * time.Second, Jar: jar, Transport: ct}
 }
 
 const (
