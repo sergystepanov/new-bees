@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/tls"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -34,6 +33,12 @@ func init() {
 	atomic.StoreInt32(&isFirst, 0)
 }
 
+const (
+	ContentType = "Content-Type"
+	GET         = "GET"
+	ips         = "f" + "ips"
+)
+
 func proxy() func(w http.ResponseWriter, r *http.Request) {
 	ua := envOr("UA", "")
 	setCookie := envOr("SET_COOKIE", "")
@@ -58,12 +63,12 @@ func proxy() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if !noDDG && strings.Contains(url_, "f"+"ips") {
+		if !noDDG && strings.Contains(url_, ips) {
 			err = ddosGuard(u, &client)
-			log.Printf("DDG: err?=%v", err)
+			//log.Printf("DDG: err?=%v", err)
 		}
 
-		req, err := http.NewRequest("GET", url_, nil)
+		req, err := http.NewRequest(GET, url_, nil)
 		if err != nil {
 			log.Printf("bad url: %v", url_)
 			return
@@ -82,13 +87,7 @@ func proxy() func(w http.ResponseWriter, r *http.Request) {
 		}
 		defer func() { _ = resp.Body.Close() }()
 
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			log.Printf("couldn't read, %v", err)
-			return
-		}
-
-		w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
-		_, _ = fmt.Fprintf(w, "%s", body)
+		w.Header().Set(ContentType, resp.Header.Get(ContentType))
+		_, _ = io.Copy(w, resp.Body)
 	}
 }
