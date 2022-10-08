@@ -100,26 +100,13 @@ func proxy() func(w http.ResponseWriter, r *http.Request) {
 			}
 		}()
 
-		if atomic.LoadInt32(&isFirst) == 0 && !noDDG && strings.Contains(url_, "f"+"ips") {
-			time.Sleep(5 * time.Second)
-			err = ddosGuard(u, &client)
-			resp, err = client.Do(req)
-			atomic.StoreInt32(&isFirst, 1)
-			if err != nil {
-				log.Printf("couldn't get, %v", err)
-				return
-			}
-			log.Printf("2nd rq")
-		}
-
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			log.Printf("couldn't read, %v", err)
 			return
 		}
 
-		contentType := resp.Header.Get("Content-Type")
-		w.Header().Set("Content-Type", contentType)
+		w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
 		_, _ = fmt.Fprintf(w, "%s", body)
 	}
 }
