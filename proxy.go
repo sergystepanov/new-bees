@@ -23,13 +23,14 @@ func init() {
 	ct := http.DefaultTransport.(*http.Transport).Clone()
 	ct.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
-	client = http.Client{Timeout: 60 * time.Second, Jar: jar, Transport: ct}
+	client = http.Client{Timeout: 40 * time.Second, Jar: jar, Transport: ct}
 }
 
 const (
-	ContentType = "Content-Type"
-	GET         = "GET"
-	ips         = "f" + "ips"
+	ContentEncoding = "Content-Encoding"
+	ContentType     = "Content-Type"
+	GET             = "GET"
+	ips             = "f" + "ips"
 )
 
 func proxy() func(w http.ResponseWriter, r *http.Request) {
@@ -39,7 +40,6 @@ func proxy() func(w http.ResponseWriter, r *http.Request) {
 	log.Printf("PROXY: UA=%v | Cookie=%v | NO_DDG=%v", ua, setCookie, noDDG)
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		// parse POST params
 		if err := r.ParseForm(); err != nil {
 			log.Printf("couldn't parse params, %v", err)
 			return
@@ -61,11 +61,14 @@ func proxy() func(w http.ResponseWriter, r *http.Request) {
 			//log.Printf("DDG: err?=%v", err)
 		}
 
+		log.Printf("-> [%v]", url_)
 		req, err := http.NewRequest(GET, url_, nil)
 		if err != nil {
 			log.Printf("bad url: %v", url_)
 			return
 		}
+
+		req.Header.Add("Accept-Encoding", "gzip, br")
 
 		if ua != "" {
 			req.Header.Set("User-Agent", ua)
@@ -85,7 +88,13 @@ func proxy() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		w.Header().Set(ContentType, resp.Header.Get(ContentType))
+		hh := w.Header()
+		hh.Set(ContentType, resp.Header.Get(ContentType))
+		encoding := resp.Header.Get(ContentEncoding)
+		if encoding != "" {
+			hh.Set(ContentEncoding, encoding)
+		}
 		_, _ = w.Write(body)
+		log.Printf("<- %v (%v)", len(body), encoding)
 	}
 }
