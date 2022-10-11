@@ -9,3 +9,4 @@ Has some DDG bypass capabilities.
 ```
 :localhost:8080/url?_url=https://ya.ru
 ```
+
