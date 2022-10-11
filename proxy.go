@@ -30,7 +30,7 @@ const (
 	ContentEncoding = "Content-Encoding"
 	ContentType     = "Content-Type"
 	GET             = "GET"
-	ips             = "f" + "ips"
+	ips             = "f" + "ips.ru"
 )
 
 func proxy() func(w http.ResponseWriter, r *http.Request) {
