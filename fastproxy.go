@@ -10,23 +10,23 @@ import (
 
 var client0 *fasthttp.Client
 
+var encoding = []byte("gzip, br")
+
 func init() {
-	readTimeout, _ := time.ParseDuration("30s")
-	writeTimeout, _ := time.ParseDuration("30s")
-	maxIdleConnDuration, _ := time.ParseDuration("15m")
+	dial0 := &fasthttp.TCPDialer{
+		Concurrency:      4096,
+		DNSCacheDuration: time.Hour,
+	}
 	client0 = &fasthttp.Client{
 		Name:                          "Go-http-client/1.1",
-		ReadTimeout:                   readTimeout,
-		WriteTimeout:                  writeTimeout,
-		MaxIdleConnDuration:           maxIdleConnDuration,
+		ReadTimeout:                   30 * time.Second,
+		WriteTimeout:                  30 * time.Second,
+		MaxIdleConnDuration:           15 * time.Minute,
 		NoDefaultUserAgentHeader:      true,
 		DisableHeaderNamesNormalizing: true, // If you set the case on your headers correctly you can enable this
 		DisablePathNormalizing:        true,
 		// increase DNS cache time to an hour instead of default minute
-		Dial: (&fasthttp.TCPDialer{
-			Concurrency:      4096,
-			DNSCacheDuration: time.Hour,
-		}).Dial,
+		Dial:      dial0.Dial,
 		TLSConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 }
@@ -41,8 +41,8 @@ func fastProxy(ctx *fasthttp.RequestCtx) {
 	log.Printf("[%s] -> [%s]", ctx.Host(), url_)
 
 	req := fasthttp.AcquireRequest()
-	req.SetRequestURI(string(url_))
-	req.Header.Set(fasthttp.HeaderAcceptEncoding, "gzip, br")
+	req.SetRequestURIBytes(url_)
+	req.Header.SetBytesV(fasthttp.HeaderAcceptEncoding, encoding)
 	req.Header.SetMethod(fasthttp.MethodGet)
 	resp := fasthttp.AcquireResponse()
 	err := client0.Do(req, resp)
@@ -52,16 +52,12 @@ func fastProxy(ctx *fasthttp.RequestCtx) {
 		log.Printf("couldn't read, %v", err)
 		return
 	}
+
 	body := resp.Body()
-	contentType := resp.Header.ContentEncoding()
-	contentEncoding := resp.Header.ContentEncoding()
+	ctx.SetContentTypeBytes(resp.Header.ContentType())
+	ctx.Response.Header.SetBytesV(fasthttp.HeaderContentEncoding, resp.Header.ContentEncoding())
 	fasthttp.ReleaseResponse(resp)
 
-	ctx.SetContentType(string(contentType))
-	if contentEncoding != nil {
-		ctx.Response.Header.Set(fasthttp.HeaderContentEncoding, string(contentEncoding))
-	}
 	ctx.SetBody(body)
-
-	log.Printf("<- %v (%v)", len(body), string(contentEncoding))
+	log.Printf("<- %vb", len(body))
 }
