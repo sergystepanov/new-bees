@@ -1,7 +1,7 @@
 module github.com/sergystepanov/new-bees
 
-// +heroku goVersion go1.18
-go 1.18
+// +heroku goVersion go1.20
+go 1.20
 
 require github.com/valyala/fasthttp v1.44.0
 
