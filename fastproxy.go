@@ -14,7 +14,7 @@ var encoding = []byte("gzip, br")
 
 func init() {
 	dial0 := &fasthttp.TCPDialer{
-		Concurrency:      4096,
+		Concurrency:      512,
 		DNSCacheDuration: time.Hour,
 	}
 	client0 = &fasthttp.Client{
@@ -53,11 +53,11 @@ func fastProxy(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	body := resp.Body()
 	ctx.SetContentTypeBytes(resp.Header.ContentType())
+	ctx.SetStatusCode(resp.StatusCode())
 	ctx.Response.Header.SetBytesV(fasthttp.HeaderContentEncoding, resp.Header.ContentEncoding())
-	fasthttp.ReleaseResponse(resp)
-
-	ctx.SetBody(body)
+	body := resp.Body()
+	ctx.Response.SetBodyRaw(body)
 	log.Printf("<- %vb", len(body))
+	fasthttp.ReleaseResponse(resp)
 }
