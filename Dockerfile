@@ -12,6 +12,7 @@ FROM alpine:3.22
 
 COPY --from=build /usr/local/bin/app ./app
 
-EXPOSE 8080
+EXPOSE 8081
+ENV PORT 8081
 
 ENTRYPOINT ["./app"]
